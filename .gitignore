@@ -1,0 +1,32 @@
+# ── 비밀 (절대 커밋 금지) ─────────────────────────────
+.env
+*.pem
+*.pub
+
+# ── 파이썬 산출물 ────────────────────────────────────
+__pycache__/
+*.pyc
+.venv/
+
+# ── OS / 편집 잔여물 ─────────────────────────────────
+.DS_Store
+*.bak
+*.bak[0-9]*
+*.before[0-9]*
+*.log
+
+# ── 대용량 원천/중간 산출물 (재생성 가능) ──────────────
+.tessdata/
+data/fund_text/
+data/raw_text/
+data/ocr/
+data/ocr_json/
+data/ocr_json.tar.gz
+data/runs/
+eval/_to_delete/
+
+# ── 내부 작업 문서 (제출 대상 아님) ───────────────────
+이어받기_*.md
+CLI_부트스트랩.md
+docs/CODEX_*.md
+_to_delete/

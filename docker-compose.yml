@@ -1,0 +1,44 @@
+services:
+  pension-agent:
+    build: .
+    image: pension-agent:1.0
+    container_name: pension-agent
+    restart: always                 # 09.06 코드 동결 후 무중단 요구 대응 (답변 수집 09.07 10:00~09.11 15:00)
+    # 주최측 공지: HTTP 는 80, HTTPS 는 443 표준 포트로 구성할 것.
+    # 8000 은 남겨 둔다 — 09.06 새벽에 외부 200 을 실측한 경로이고,
+    # README·명세서·스크립트의 기존 참조가 깨지지 않는다. 추가 비용·위험 없음.
+    ports: ["80:8000", "8000:8000"]
+    env_file: [.env]
+    environment:
+      # 주최측 공식 답변(09.01): 문항당 타임아웃 300초, 5xx·타임아웃 시 최대 2회 재시도.
+      # 실측 지연은 p95 11.4초 / max 23.4초다. 40초는 과도하게 보수적이었고,
+      # 스스로 답을 버리는 쪽으로만 작동했다. 300초 한도 안에서 여유를 둔다.
+      - ANSWER_TIMEOUT=240
+      # 개별 LLM 호출 상한. 전체 240초 안에서 재시도·폴백까지 소화할 수 있는 값.
+      - CLOVA_TIMEOUT=60
+      # 모델당 시도 = RETRIES+1. 예산 180초 / 호출당 60초 이므로
+      #   HCX-005 2회(120초) → HCX-DASH-002 1회(60초) = 180초.
+      # 2로 두면 HCX-005 3회로 예산을 다 써 폴백 모델에 도달하지 못한다.
+      - CLOVA_RETRIES=1
+      # chat() 한 번이 LLM 에 쓰는 전체 벽시계 상한. ANSWER_TIMEOUT(240)보다 낮게 둬야
+      # main.py 의 wait_for 경로(retrieved_context 빈 문자열)로 떨어지지 않고
+      # 파이프라인이 근거를 담은 폴백 답변을 만들 여유가 남는다.
+      - CLOVA_BUDGET=180
+      # 주최측 공식 답변(09.01): 각 필드 길이 제한 없음. 단 극단적으로 길면
+      # 평가 시스템이 한 번에 처리 가능한 분량을 초과해 초과분이 반영되지 않을 수 있음.
+      # 실측 think_trace p95 2,605자 → 무제한으로 둔다. DROP_PLAN 압축은 안전장치로만 남긴다.
+      - MAX_THINK_TRACE=0
+      # 근거 청크 1건당 최대 문자 수. 질의어 밀도가 가장 높은 구간만 남긴다.
+      - MAX_CHUNK_CHARS=420
+    # 실측 RSS 771MB(워커 1) + 여유. 초과 시 OOM 로그로 원인이 남는다.
+    mem_limit: 2g
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=8).status==200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
+    logging:
+      driver: json-file
+      options: {max-size: "20m", max-file: "5"}

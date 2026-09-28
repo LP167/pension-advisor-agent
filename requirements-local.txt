@@ -1,0 +1,3 @@
+# 로컬 개발용 최소 의존성 (러너·벤치마크 실행에만 필요)
+# 운영 이미지는 requirements.txt 를 쓴다 (Docker python:3.11-slim)
+certifi>=2024.7.4
